@@ -1,38 +1,36 @@
 
 class Scheduler {
     queue = [];
-    limit = 2;
+    limit = 0;
+    working = 0;
+
+    constructor(limit) {
+        if (typeof limit !== 'number' || (Math.floor(limit) <= 0)) {
+            throw new TypeError('limit must be a positive number')
+        }
+        this.limit = limit;
+    }
 
     add (promiseCreator) {
         return new Promise((resolve) => {
             promiseCreator.resolve = resolve;
             this.queue.push(promiseCreator);
-            const size = Object.keys(this.queue).length;
-            if (size <= this.limit) {
-                this.run(promiseCreator);
-            }
+            this.run();
         })
     }
 
-    run(promiseCreator) {
-        promiseCreator().then(() => {
-            promiseCreator.resolve();
-            const p = this.queue.shift();
-            p && this.run(p);
-        })
+    run() {
+        if (this.working < this.limit) {
+            this.working++;
+            const task = this.queue.shift();
+            task && task().then(() => {
+                this.working--;
+                task.resolve();
+                this.run();
+            })
+        }
     }
 
 }
 
-const timeout = time => new Promise((resolve) => setTimeout(resolve, time))
-
-const scheduler = new Scheduler();
-
-const addTask = (time, order) => {
-    scheduler.add(() => timeout(time)).then(() => console.log(order))
-}
-
-addTask(1000, 1)
-addTask(500, 2)
-addTask(300, 3)
-addTask(400, 4)
+module.exports = Scheduler;
